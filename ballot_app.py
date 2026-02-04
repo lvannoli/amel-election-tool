@@ -198,7 +198,7 @@ if not st.session_state.logged_in:
     with st.sidebar:
         st.markdown("### Admin")
         pwd = st.text_input("Password", type="password")
-        if pwd == st.secrets.get("admin_password", "K_ammello123"):
+        if pwd == st.secrets.get("admin_password"):
             st.success("Admin access granted")
             try:
                 spreadsheet = get_google_sheet()
@@ -259,7 +259,6 @@ if not st.session_state.logged_in:
 
 # --- 9. VOTING PAGE (LANGUAGE BASED ON USER) ---
 L = LABELS[st.session_state.lang]
-st.write(f"DEBUG: lang={st.session_state.lang}")
 
 col_title, col_logout = st.columns([4, 1])
 with col_title:
