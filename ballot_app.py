@@ -109,7 +109,7 @@ AUTHORIZED_MEMBERS = sorted([
     "Giulia", "Chiara", "Alaa", "Costanza", "Lorenzo", "Margherita", 
     "Sofia", "Stefania", "Marcello", "Matilde", "Tommaso", "Leonardo"
 ])
-
+# add list of candidates from file
 PRESIDENT_CANDIDATES = {
     "Roberto Renino": "img/Roberto Renino.jpg"
 }
