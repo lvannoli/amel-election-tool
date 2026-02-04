@@ -15,17 +15,13 @@ def get_google_sheet():
         "https://www.googleapis.com/auth/drive"
     ]
     
-    # For Streamlit Cloud, use secrets
     if "gcp_credentials" in st.secrets:
         creds_dict = st.secrets["gcp_credentials"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     else:
-        # For local use, use credentials.json file
         creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
     
     client = gspread.authorize(creds)
-    
-    # CHANGE THIS to your Google Sheet name
     spreadsheet = client.open("Amel Elections 2026")
     return spreadsheet
 
@@ -33,7 +29,7 @@ def get_voters():
     """Get list of people who already voted"""
     try:
         sheet = get_google_sheet().worksheet("Voters")
-        records = sheet.col_values(1)[1:]  # Skip header
+        records = sheet.col_values(1)[1:]
         return records
     except Exception as e:
         st.error(f"Connection error: {e}")
@@ -48,12 +44,10 @@ def save_vote(vote, name):
     try:
         spreadsheet = get_google_sheet()
         
-        # Save anonymous vote
         sheet_votes = spreadsheet.worksheet("Votes")
         row = [vote["P"]] + [vote[f"C{i+1}"] for i in range(NUM_BOARD_MEMBERS_TO_VOTE)]
         sheet_votes.append_row(row)
         
-        # Record that they voted
         sheet_voters = spreadsheet.worksheet("Voters")
         sheet_voters.append_row([name])
         
@@ -62,15 +56,44 @@ def save_vote(vote, name):
         st.error(f"Save error: {e}")
         return False
 
-# --- 3. SESSION STATE ---
+# --- 3. LOAD DATA FROM FILES ---
+def load_members():
+    """Load authorized members from file"""
+    try:
+        with open("members.txt", "r") as f:
+            return sorted([line.strip() for line in f if line.strip()])
+    except:
+        return []
+
+def load_candidates(filename):
+    """Load candidates from file (format: name,image_path)"""
+    candidates = {}
+    try:
+        with open(filename, "r") as f:
+            for line in f:
+                if "," in line:
+                    name, path = line.strip().split(",", 1)
+                    candidates[name.strip()] = path.strip()
+    except:
+        pass
+    return candidates
+
+AUTHORIZED_MEMBERS = load_members()
+PRESIDENT_CANDIDATES = load_candidates("president_candidates.txt")
+BOARD_CANDIDATES = load_candidates("board_candidates.txt")
+NUM_BOARD_MEMBERS_TO_VOTE = min(4, len(BOARD_CANDIDATES))
+
+# --- 4. SESSION STATE ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'voter_name' not in st.session_state:
     st.session_state.voter_name = ""
 if 'confirm_vote' not in st.session_state:
     st.session_state.confirm_vote = False
+if 'lang' not in st.session_state:
+    st.session_state.lang = "en"
 
-# --- 4. CSS ---
+# --- 5. CSS ---
 st.markdown("""
     <style>
     .stMarkdown h3 {
@@ -103,43 +126,44 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 5. DATA ---
-AUTHORIZED_MEMBERS = sorted([
-    "Roberto R", "Roberto V", "Andrea", "Marco", "Mara", "Federica", 
-    "Giulia", "Chiara", "Alaa", "Costanza", "Lorenzo", "Margherita", 
-    "Sofia", "Stefania", "Marcello", "Matilde", "Tommaso", "Leonardo"
-])
-# add list of candidates from file
-PRESIDENT_CANDIDATES = {
-    "Roberto Renino": "img/Roberto Renino.jpg"
-}
-
-BOARD_CANDIDATES = {
-    "Lorenzo Cogliolo": "img/Lorenzo Cogliolo.jpg", 
-    "Margherita Monti": "img/Margherita Monti.jpg",
-    "Marco Zac Di Fraia": "img/Marco Zac Di Fraia.jpg", 
-    "Mara Moreale": "img/Mara Moreale.jpg"
-}
-
-NUM_BOARD_MEMBERS_TO_VOTE = min(4, len(BOARD_CANDIDATES))
-
-# --- 6. TEXT LABELS ---
+# --- 6. TEXT LABELS (BILINGUAL) ---
 LABELS = {
-    "title": "Ballot Paper",
-    "h1": "1. Election of the President",
-    "h2": "2. Election of the Board of Directors",
-    "pick_p": "Choose the President:",
-    "pick_c_info": f"Select {NUM_BOARD_MEMBERS_TO_VOTE} members for the Board:",
-    "c_label": "Board Member",
-    "submit": "PROCEED TO VOTE",
-    "confirm_title": "⚠️ Confirm your vote",
-    "confirm_msg": "You are about to vote for:",
-    "confirm_yes": "✅ CONFIRM VOTE",
-    "confirm_no": "❌ Go back",
-    "error": "⚠️ Please select all required candidates.",
-    "error_duplicates": "⚠️ You selected the same candidate multiple times.",
-    "success": "✅ Vote registered successfully!",
-    "logout": "🚪 Exit"
+    "en": {
+        "title": "Ballot Paper",
+        "h1": "1. Election of the President",
+        "h2": "2. Election of the Board of Directors",
+        "pick_p": "Choose the President:",
+        "pick_c_info": f"Select {NUM_BOARD_MEMBERS_TO_VOTE} members for the Board:",
+        "c_label": "Board Member",
+        "submit": "PROCEED TO VOTE",
+        "confirm_title": "⚠️ Confirm your vote",
+        "confirm_msg": "You are about to vote for:",
+        "confirm_yes": "✅ CONFIRM VOTE",
+        "confirm_no": "❌ Go back",
+        "error": "⚠️ Please select all required candidates.",
+        "error_duplicates": "⚠️ You selected the same candidate multiple times.",
+        "success": "✅ Vote registered successfully!",
+        "logout": "🚪 Exit",
+        "president": "President"
+    },
+    "it": {
+        "title": "Scheda Elettorale",
+        "h1": "1. Elezione del Presidente",
+        "h2": "2. Elezione del Consiglio Direttivo",
+        "pick_p": "Scegli il Presidente:",
+        "pick_c_info": f"Seleziona {NUM_BOARD_MEMBERS_TO_VOTE} membri per il Consiglio:",
+        "c_label": "Consigliere",
+        "submit": "PROCEDI AL VOTO",
+        "confirm_title": "⚠️ Conferma il tuo voto",
+        "confirm_msg": "Stai per votare:",
+        "confirm_yes": "✅ CONFERMA VOTO",
+        "confirm_no": "❌ Torna indietro",
+        "error": "⚠️ Seleziona tutti i candidati richiesti.",
+        "error_duplicates": "⚠️ Hai selezionato lo stesso candidato più volte.",
+        "success": "✅ Voto registrato con successo!",
+        "logout": "🚪 Esci",
+        "president": "Presidente"
+    }
 }
 
 # --- 7. FUNCTIONS ---
@@ -147,8 +171,9 @@ def logout():
     st.session_state.logged_in = False
     st.session_state.voter_name = ""
     st.session_state.confirm_vote = False
+    st.session_state.lang = "en"
 
-# --- 8. LOGIN PAGE ---
+# --- 8. LOGIN PAGE (ALWAYS ENGLISH) ---
 if not st.session_state.logged_in:
     st.title("🗳️ Amel Italia Elections")
     st.markdown("---")
@@ -163,6 +188,8 @@ if not st.session_state.logged_in:
                 else:
                     st.session_state.logged_in = True
                     st.session_state.voter_name = choice
+                    # Alaa gets English, everyone else gets Italian
+                    st.session_state.lang = "en" if choice == "Alaa" else "it"
                     st.rerun()
         else:
             st.warning("Please select a name")
@@ -176,11 +203,8 @@ if not st.session_state.logged_in:
             try:
                 spreadsheet = get_google_sheet()
                 
-                # Get votes
                 sheet_votes = spreadsheet.worksheet("Votes")
                 votes = sheet_votes.get_all_records()
-                
-                # Get voters
                 voters = get_voters()
                 
                 st.metric("Total votes", len(votes))
@@ -189,7 +213,6 @@ if not st.session_state.logged_in:
                 if votes:
                     st.markdown("---")
                     
-                    # --- RESULTS: PRESIDENT ---
                     st.markdown("### 🏆 President Results")
                     president_counts = {}
                     for v in votes:
@@ -197,37 +220,30 @@ if not st.session_state.logged_in:
                         if p:
                             president_counts[p] = president_counts.get(p, 0) + 1
                     
-                    # Sort by votes (descending)
                     sorted_presidents = sorted(president_counts.items(), key=lambda x: x[1], reverse=True)
                     for name, count in sorted_presidents:
                         st.write(f"**{name}:** {count} votes")
                     
                     st.markdown("---")
                     
-                    # --- RESULTS: BOARD ---
                     st.markdown("### 🏆 Board Results")
                     board_counts = {}
                     for v in votes:
-                        for i in range(1, 10):  # Check C1 through C9
+                        for i in range(1, 10):
                             c = v.get(f"C{i}", "")
                             if c:
                                 board_counts[c] = board_counts.get(c, 0) + 1
                     
-                    # Sort by votes (descending)
                     sorted_board = sorted(board_counts.items(), key=lambda x: x[1], reverse=True)
                     for name, count in sorted_board:
                         st.write(f"**{name}:** {count} votes")
                     
                     st.markdown("---")
                     
-                    # --- RAW DATA ---
                     with st.expander("📊 View raw data"):
                         st.dataframe(votes)
                     
-                    # --- DOWNLOAD BUTTON ---
-                    import io
                     import pandas as pd
-                    
                     df = pd.DataFrame(votes)
                     csv = df.to_csv(index=False)
                     st.download_button(
@@ -241,8 +257,8 @@ if not st.session_state.logged_in:
                 st.error(f"Error: {e}")
     st.stop()
 
-# --- 9. VOTING PAGE ---
-L = LABELS
+# --- 9. VOTING PAGE (LANGUAGE BASED ON USER) ---
+L = LABELS[st.session_state.lang]
 
 col_title, col_logout = st.columns([4, 1])
 with col_title:
@@ -308,7 +324,7 @@ if not st.session_state.confirm_vote:
 else:
     st.warning(L['confirm_title'])
     st.markdown(f"**{L['confirm_msg']}**")
-    st.markdown(f"- **President:** {st.session_state.temp_vote['P']}")
+    st.markdown(f"- **{L['president']}:** {st.session_state.temp_vote['P']}")
     for i in range(NUM_BOARD_MEMBERS_TO_VOTE):
         st.markdown(f"- **{L['c_label']} {i+1}:** {st.session_state.temp_vote[f'C{i+1}']}")
     
