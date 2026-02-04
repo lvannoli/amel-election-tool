@@ -259,6 +259,7 @@ if not st.session_state.logged_in:
 
 # --- 9. VOTING PAGE (LANGUAGE BASED ON USER) ---
 L = LABELS[st.session_state.lang]
+st.write(f"DEBUG: lang={st.session_state.lang}")
 
 col_title, col_logout = st.columns([4, 1])
 with col_title:
